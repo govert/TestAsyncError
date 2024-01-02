@@ -35,26 +35,25 @@ namespace TestAsyncError
                 {
                     // We've detected an error from the observable, so we switch to error handling mode
                     _errorCalls.Add(callInfo);
+                    // Don't return yet - fall through to the error handling code below
+                }
+            }
 
-                    // Then call the error fallback function
-                    // (arguments sent to the error callback need not be the same as the original call)
-                    return XlCall.Excel(XlCall.xlUDF, nameof(AsyncErrorFallback), input);
-                }
-            }
-            else
+            // We're in error handling mode - we need to call the error fallback function
+            // (arguments sent to the error callback need not be the same as the original call)
+
+            // If we are in the error handling state, we need to continue calling the error fallback
+            // until it returns a value other than #N/A
+            var errorFallbackResult = XlCall.Excel(XlCall.xlUDF, nameof(AsyncErrorFallback), input);
+            if (!errorFallbackResult.Equals(ExcelError.ExcelErrorNA))
             {
-                // If we are in the error handling state, we need to continue calling the error fallback
-                // until it returns a value other than #N/A
-                var errorFallbackResult = AsyncErrorFallback(input);
-                if (!errorFallbackResult.Equals(ExcelError.ExcelErrorNA))
-                {
-                    // We have a result from the error fallback - remove the cached error
-                    // which means the next call to the function will restart the original observable
-                    _errorCalls.Remove(callInfo);
-                }
-                // Return the result of the error fallback
-                return errorFallbackResult;
+                // We have a result from the error fallback - remove the cached error
+                // which means the next call to the function will restart the original observable
+                _errorCalls.Remove(callInfo);
             }
+
+            // Return the result of the error fallback
+            return errorFallbackResult;
         }
 
         // This is the error fallback function - it is called when the observable returns an error
@@ -94,6 +93,7 @@ namespace TestAsyncError
         public IDisposable Subscribe(IExcelObserver observer)
         {
             _observer = observer;
+            // We could 'return' a value immediately like this, instead of returning #N/A until the first tick
             // observer.OnNext(DateTime.Now.ToString("HH:mm:ss.fff") + " (Subscribe)");
             return new ActionDisposable(() =>
             {
