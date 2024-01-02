@@ -10,6 +10,8 @@ namespace TestAsyncError
     {
         static HashSet<AsyncCallInfo> _errorCalls = new HashSet<AsyncCallInfo>();
 
+        // RunClock is our UDF registered with Excel, containing the observable calls
+        // I use the 'fail' parameter to internally make my observable set an OnError result - it's not part of the control flow you'd use typically
         public static object RunClock(string input, bool fail)
         {
             // We build an AsyncCallInfo that is used to identify calls to this function
